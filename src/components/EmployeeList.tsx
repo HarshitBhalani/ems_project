@@ -8,7 +8,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export type Employee = {
-  id: number;
+  _id?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -24,13 +24,13 @@ export function EmployeeList({
 }: {
   employees: Employee[];
   onEdit: (emp: Employee) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Filter employees by search term
+  // Live filter
   const filteredEmployees = useMemo(() => {
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.trim().toLowerCase();
     return !term
       ? employees
       : employees.filter((emp) =>
@@ -41,10 +41,18 @@ export function EmployeeList({
         );
   }, [employees, searchTerm]);
 
-  // Export as Excel
+  // Export as Excel (with visible serial ID)
   const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(
-      filteredEmployees.map(({ id, ...rest }) => ({ ID: id, ...rest }))
+      filteredEmployees.map((emp, idx) => ({
+        ID: idx + 1,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        contact: emp.contact,
+        designation: emp.designation,
+        salary: Math.floor(emp.salary).toString(),
+      }))
     );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Employees");
@@ -60,29 +68,27 @@ export function EmployeeList({
     );
   };
 
-  // Export as PDF (Next.js/React-friendly way)
+  // Export as PDF (with visible serial ID)
   const exportToPDF = () => {
     const doc = new jsPDF();
     autoTable(doc, {
-      head: [
-        [
-          "ID",
-          "First Name",
-          "Last Name",
-          "Email",
-          "Contact",
-          "Designation",
-          "Salary",
-        ],
-      ],
-      body: filteredEmployees.map((emp) => [
-        emp.id,
+      head: [[
+        "ID",
+        "First Name",
+        "Last Name",
+        "Email",
+        "Contact",
+        "Designation",
+        "Salary",
+      ]],
+      body: filteredEmployees.map((emp, idx) => [
+        idx + 1,
         emp.firstName,
         emp.lastName,
         emp.email,
         emp.contact,
         emp.designation,
-        Math.floor(emp.salary).toString(), // integer only, no decimals/$
+        Math.floor(emp.salary).toString(),
       ]),
       headStyles: { fillColor: [100, 116, 139] },
       margin: { top: 20 },
@@ -91,7 +97,7 @@ export function EmployeeList({
     doc.save("employees.pdf");
   };
 
-  // Helper for salary
+  // Salary helper (no decimals)
   const formatSalary = (salary: number) => Math.floor(salary).toString();
 
   return (
@@ -101,7 +107,7 @@ export function EmployeeList({
         <Input
           placeholder="Search employees..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={e => setSearchTerm(e.target.value)}
           className="max-w-xs"
         />
         <div className="flex gap-2">
@@ -136,9 +142,9 @@ export function EmployeeList({
                 </td>
               </tr>
             )}
-            {filteredEmployees.map((emp) => (
-              <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-3 py-2 text-center">{emp.id}</td>
+            {filteredEmployees.map((emp, idx) => (
+              <tr key={emp._id || idx} className="hover:bg-slate-50 transition-colors">
+                <td className="px-3 py-2 text-center">{idx + 1}</td>
                 <td className="px-3 py-2 text-left">{emp.firstName}</td>
                 <td className="px-3 py-2 text-left">{emp.lastName}</td>
                 <td className="px-3 py-2 text-left">{emp.email}</td>
@@ -159,12 +165,10 @@ export function EmployeeList({
                     size="sm"
                     variant="destructive"
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          `Are you sure you want to delete ${emp.firstName} ${emp.lastName}?`
-                        )
-                      ) {
-                        onDelete(emp.id);
+                      if (window.confirm(
+                        `Are you sure you want to delete ${emp.firstName} ${emp.lastName}?`
+                      )) {
+                        onDelete(emp._id!);
                       }
                     }}
                   >

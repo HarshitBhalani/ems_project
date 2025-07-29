@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI as string; // Set in your .env file
+const MONGODB_URI = process.env.MONGODB_URI as string;
 
 if (!MONGODB_URI) {
   throw new Error(
@@ -8,7 +8,17 @@ if (!MONGODB_URI) {
   );
 }
 
-let cached = (global as any).mongoose || { conn: null, promise: null };
+// Type for the connection cache
+type MongooseCache = {
+  conn: typeof mongoose | null,
+  promise: Promise<typeof mongoose> | null,
+};
+
+const globalWithMongoose = global as typeof globalThis & {
+  mongoose?: MongooseCache
+};
+
+const cached: MongooseCache = globalWithMongoose.mongoose || { conn: null, promise: null };
 
 export async function dbConnect() {
   if (cached.conn) return cached.conn;
@@ -18,6 +28,6 @@ export async function dbConnect() {
     });
   }
   cached.conn = await cached.promise;
-  (global as any).mongoose = cached;
+  globalWithMongoose.mongoose = cached;
   return cached.conn;
 }

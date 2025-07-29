@@ -44,7 +44,7 @@ export default function Page() {
     <main className="min-h-screen bg-slate-100 p-4">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-slate-800 mb-6 text-center">
-          EMS - Employee Management
+          Employee Management System
         </h1>
         {!showForm && (
           <div className="text-center mb-6">
